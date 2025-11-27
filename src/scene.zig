@@ -18,7 +18,7 @@ pub const VTable = struct {
     start: *const fn (self: *Scene) Error!void,
     loop: *const fn (self: *Scene) Error!void,
     stop: *const fn(self: *Scene) Error!void,
-    swap: *const fn(self: *Scene, new: Scene) Error!void = unImplementedSwap,
+    swap: *const fn(self: *Scene, new: Scene) Error!void = defaultSwap,
 };
 
 pub const Error = error{
@@ -27,8 +27,10 @@ pub const Error = error{
     DeinitError,
     SdlError,
     WriteFailed,
+    ReadFailed,
     OutOfMemory,
     NotImplemented,
+    EndOfStream,
 };
 
 pub fn start(self: *Scene) Error!void {
@@ -43,6 +45,13 @@ pub fn stop(self: *Scene) Error!void {
     try self.vtable.stop(self);
 }
 
-fn unImplementedSwap(_: *Scene,_: Scene) Error!void {
-    return Error.NotImplemented;
+pub fn swap(self: *Scene, new: Scene) Error!void {
+    try self.vtable.swap(self,new);
+}
+
+fn defaultSwap(s: *Scene, new: Scene) Error!void {
+    try s.stop();
+    s.vtable = new.vtable;
+    s.vars = new.vars;
+    try s.start();
 }

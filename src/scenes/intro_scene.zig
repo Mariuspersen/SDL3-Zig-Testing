@@ -8,8 +8,6 @@ const Error = Scene.Error;
 
 const Self = @This();
 
-interface: Scene,
-
 const Vars = struct {
     init_flags: sdl3.InitFlags = .everything,
     fps: usize = 60,
@@ -19,19 +17,16 @@ const Vars = struct {
     fps_capper: sdl3.extras.FramerateCapper(f32) = .{ .mode = .{ .limited = 60 } },
 };
 
-pub fn init(alloc: std.mem.Allocator) !Self {
-    return .{
-        .interface = try .init(
-            alloc,
-            Vars,
-            &.{
-                .start = start,
-                .loop = loop,
-                .stop = stop,
-                .swap = swap,
-            },
-        ),
-    };
+pub fn init(alloc: std.mem.Allocator) !Scene {
+    return try .init(
+        alloc,
+        Vars,
+        &.{
+            .start = start,
+            .loop = loop,
+            .stop = stop,
+        },
+    );
 }
 
 fn start(s: *Scene) Error!void {
@@ -52,7 +47,7 @@ fn loop(s: *Scene) Error!void {
         .quit => s.looping = false,
         .terminating => s.looping = false,
         .key_down => |_| {
-            try s.vtable.swap(s,try TerminalScene.init(s.alloc));
+            try s.swap(try TerminalScene.init(s.alloc));
         },
         else => {},
     };
@@ -63,11 +58,4 @@ fn stop(s: *Scene) Error!void {
     vars.window.deinit();
     sdl3.quit(vars.init_flags);
     s.alloc.destroy(vars);
-}
-
-fn swap(s: *Scene, new: Scene) Error!void {
-    try s.stop();
-    s.vtable = new.vtable;
-    s.vars = new.vars;
-    try s.start();
 }

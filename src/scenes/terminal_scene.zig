@@ -1,4 +1,5 @@
 const Scene = @import("../scene.zig");
+const Intro = @import("intro_scene.zig");
 const std = @import("std");
 
 const Error = Scene.Error;
@@ -7,6 +8,7 @@ const Self = @This();
 
 const Vars = struct {
     writer: std.fs.File.Writer,
+    reader: std.fs.File.Reader,
     count: usize,
 };
 
@@ -26,6 +28,7 @@ fn start(s: *Scene) Error!void {
     const vars: *Vars = @ptrCast(@alignCast(s.vars));
     vars.* = Vars{
         .writer = std.fs.File.stdout().writer(try s.alloc.alloc(u8, 1024)),
+        .reader = std.fs.File.stdin().reader(try s.alloc.alloc(u8, 1024)),
         .count = 0,
     };
     const stdout = &vars.writer.interface;
@@ -35,9 +38,18 @@ fn start(s: *Scene) Error!void {
 fn loop(s: *Scene) Error!void {
     const vars: *Vars = @ptrCast(@alignCast(s.vars));
     vars.count += 1;
+    const stdin = &vars.reader.interface;
     const stdout = &vars.writer.interface;
-    try stdout.print("Looping...\n", .{});
-    if (vars.count >= 5) s.looping = false;
+    const char = try stdin.takeByte();
+    try stdout.print("Looping... {c}\n", .{char});
+    try stdout.flush();
+
+    switch (char) {
+        'q' => s.looping = false,
+        's' => try s.swap(try Intro.init(s.alloc)),
+        else => {},
+    }
+
 }
 
 fn stop(s: *Scene) Error!void {
@@ -46,4 +58,5 @@ fn stop(s: *Scene) Error!void {
     try stdout.print("Stopping...\n", .{});
     try stdout.flush();
     s.alloc.free(vars.writer.interface.buffer);
+    s.alloc.free(vars.reader.interface.buffer);
 }
